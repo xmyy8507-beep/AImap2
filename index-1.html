@@ -1,0 +1,1163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>毕节市学术·伦理·法治 数字人文地图</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script type="text/javascript" src="https://api.map.baidu.com/api?v=1.0&type=webgl&ak=R5ARQAHVCz4wIU4CNBeFj1K6sbBpzMT5"></script>
+    <style>
+        html, body {height:100%;margin:0;padding:0;overflow:hidden;font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;}
+        #map-container {height:100vh;width:100%;z-index:1;position:relative;}
+        
+        /* 美化标签样式 */
+        .custom-label{
+            display:inline-flex;
+            align-items:center;
+            background:rgba(255,255,255,0.98);
+            border-radius:8px;
+            padding:6px 12px;
+            font-size:13px;
+            font-weight:500;
+            box-shadow:0 4px 12px rgba(0,0,0,0.15);
+            white-space:nowrap;
+            border-left:4px solid;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+        .custom-label:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+        }
+        
+        .category-badge{
+            width:18px;
+            height:18px;
+            border-radius:50%;
+            display:inline-flex;
+            align-items:center;
+            justify-content:center;
+            margin-right:8px;
+            color:#fff;
+            font-size:10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        /* 美化浮动面板 */
+        .floating-panel{
+            position:absolute;
+            top:20px;
+            left:20px;
+            z-index:1000;
+            background:rgba(255,255,255,0.95);
+            border-radius:16px;
+            padding:24px;
+            max-height:calc(100vh - 40px);
+            overflow-y:auto;
+            box-shadow:0 8px 32px rgba(0,0,0,0.15);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.3);
+            width:320px;
+        }
+        
+        /* 美化故事线对话框 */
+        .story-line{
+            position:absolute;
+            top:50%;
+            left:50%;
+            transform:translate(-50%,-50%);
+            z-index:1000;
+            background:rgba(255,255,255,0.98);
+            border-radius:20px;
+            padding:30px;
+            max-width:520px;
+            width:90%;
+            display:none;
+            box-shadow:0 20px 60px rgba(0,0,0,0.25);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255,255,255,0.4);
+        }
+        .story-line.active{display:block;}
+        
+        .close-story{
+            position:absolute;
+            top:15px;
+            right:20px;
+            font-size:20px;
+            cursor:pointer;
+            transition: all 0.3s ease;
+            width:30px;
+            height:30px;
+            border-radius:50%;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+        }
+        .close-story:hover{
+            background:rgba(0,0,0,0.05);
+            transform: scale(1.1);
+        }
+        
+        /* 美化进度条 */
+        .progress-bar{
+            height:6px;
+            background:rgba(0,0,0,0.1);
+            border-radius:3px;
+            margin:20px 0;
+            overflow:hidden;
+        }
+        .progress{
+            height:100%;
+            background: linear-gradient(90deg, #3b82f6, #60a5fa);
+            border-radius:3px;
+            transition: width 0.5s ease;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+        }
+        
+        /* 美化复选框 */
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            padding: 10px 12px;
+            margin: 4px 0;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .checkbox-container:hover {
+            background: rgba(59, 130, 246, 0.05);
+            transform: translateX(4px);
+        }
+        .checkbox-container input[type="checkbox"] {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border: 2px solid #d1d5db;
+            border-radius: 4px;
+            margin-right: 12px;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .checkbox-container input[type="checkbox"]:checked {
+            background: #3b82f6;
+            border-color: #3b82f6;
+        }
+        .checkbox-container input[type="checkbox"]:checked::after {
+            content: '✓';
+            position: absolute;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        /* 美化按钮 */
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+            border: none;
+            padding: 14px 20px;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            font-size: 15px;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+        }
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+        
+        .btn-secondary {
+            background: rgba(255,255,255,0.9);
+            color: #374151;
+            border: 1px solid #e5e7eb;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn-secondary:hover {
+            background: white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transform: translateY(-1px);
+        }
+        
+        /* 标题美化 */
+        .section-title {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            text-align: center;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+        
+        /* 图标动画 */
+        .icon-pulse {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        /* 悬浮效果 */
+        .hover-lift {
+            transition: all 0.3s ease;
+        }
+        .hover-lift:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+        }
+        
+        /* 新增样式 */
+        .dimension-card {
+            background: rgba(255,255,255,0.9);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            border-left: 4px solid;
+            transition: all 0.3s ease;
+        }
+        .dimension-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+        }
+        
+        .youth-responsibility {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 16px;
+            border-radius: 12px;
+            margin-top: 20px;
+            box-shadow: 0 8px 25px rgba(240, 147, 251, 0.3);
+        }
+        
+        .tab-container {
+            display: flex;
+            margin-bottom: 16px;
+            background: rgba(0,0,0,0.05);
+            border-radius: 10px;
+            padding: 4px;
+        }
+        .tab {
+            flex: 1;
+            text-align: center;
+            padding: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        .tab.active {
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .info-content {
+            max-height: 300px;
+            overflow-y: auto;
+            padding-right: 8px;
+        }
+        
+        /* 自定义滚动条 */
+        .info-content::-webkit-scrollbar {
+            width: 6px;
+        }
+        .info-content::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        .info-content::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 10px;
+        }
+        .info-content::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+        
+        /* 青年责任卡片 */
+        .youth-card {
+            background: rgba(255,255,255,0.9);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            border-top: 4px solid #8b5cf6;
+            transition: all 0.3s ease;
+        }
+        .youth-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(139, 92, 246, 0.15);
+        }
+        
+        /* 伦理思考卡片 */
+        .ethics-card {
+            background: rgba(255,255,255,0.9);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            border-top: 4px solid #10b981;
+            transition: all 0.3s ease;
+        }
+        .ethics-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.15);
+        }
+        
+        /* 故事线选择器 */
+        .story-selector {
+            background: rgba(255,255,255,0.9);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            border-top: 4px solid #3b82f6;
+        }
+        
+        .story-option {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .story-option:hover {
+            background: rgba(59, 130, 246, 0.05);
+        }
+        .story-option.active {
+            background: rgba(59, 130, 246, 0.1);
+            border-left: 4px solid #3b82f6;
+        }
+        
+        /* 挑战卡片 */
+        .challenge-card {
+            background: rgba(254, 226, 226, 0.9);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            border-top: 4px solid #ef4444;
+        }
+        
+        /* 乡村振兴卡片 */
+        .rural-card {
+            background: rgba(220, 252, 231, 0.9);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            border-top: 4px solid #22c55e;
+        }
+    </style>
+</head>
+<body>
+<div id="map-container"></div>
+
+<!-- 优化后的浮动控制面板 -->
+<div class="floating-panel hover-lift">
+    <!-- 标题区域 -->
+    <div class="section-title">
+        <i class="fa fa-map-marker-alt text-2xl mb-2 opacity-90"></i>
+        <h1 class="text-2xl font-bold mb-1">毕节市学术·伦理·法治</h1>
+        <p class="text-sm opacity-90 font-light">数字人文互动地图</p>
+    </div>
+    
+    <!-- 故事线选择器 -->
+    <div class="story-selector">
+        <div class="flex items-center mb-4">
+            <i class="fa fa-map-signs text-blue-500 mr-2 text-lg"></i>
+            <h2 class="font-bold text-gray-800 text-lg">故事线导览</h2>
+        </div>
+        
+        <div class="story-option active" data-story="cultural">
+            <i class="fa fa-university text-green-500 mr-3 text-xl"></i>
+            <div>
+                <h3 class="font-bold text-gray-800">文化传承之旅</h3>
+                <p class="text-xs text-gray-600">探索毕节特色文化与历史传承</p>
+            </div>
+        </div>
+        
+        <div class="story-option" data-story="revolutionary">
+            <i class="fa fa-star text-yellow-500 mr-3 text-xl"></i>
+            <div>
+                <h3 class="font-bold text-gray-800">红色记忆之旅</h3>
+                <p class="text-xs text-gray-600">追寻革命足迹，传承红色基因</p>
+            </div>
+        </div>
+        
+        <div class="story-option" data-story="youth">
+            <i class="fa fa-users text-purple-500 mr-3 text-xl"></i>
+            <div>
+                <h3 class="font-bold text-gray-800">青年责任之旅</h3>
+                <p class="text-xs text-gray-600">新时代青年的使命与担当</p>
+            </div>
+        </div>
+        
+        <div class="story-option" data-story="rural">
+            <i class="fa fa-leaf text-emerald-500 mr-3 text-xl"></i>
+            <div>
+                <h3 class="font-bold text-gray-800">乡村振兴之旅</h3>
+                <p class="text-xs text-gray-600">探索乡村发展与青年机遇</p>
+            </div>
+        </div>
+        
+        <button id="story-btn" class="btn-primary mt-4">
+            <i class="fa fa-play text-lg mr-3 icon-pulse"></i>
+            <span class="text-lg">开始导览</span>
+        </button>
+    </div>
+    
+    <!-- 维度筛选区域 -->
+    <div class="mb-6">
+        <div class="flex items-center mb-4">
+            <i class="fa fa-filter text-blue-500 mr-2 text-lg"></i>
+            <h2 class="font-bold text-gray-800 text-lg">维度筛选</h2>
+        </div>
+        
+        <div class="space-y-1">
+            <label class="checkbox-container">
+                <input type="checkbox" class="category-checkbox" value="morality" checked>
+                <span class="flex items-center">
+                    <i class="fa fa-heart text-red-500 mr-2"></i>
+                    <span class="text-gray-700 font-medium">道德文化传承</span>
+                </span>
+            </label>
+            
+            <label class="checkbox-container">
+                <input type="checkbox" class="category-checkbox" value="rule" checked>
+                <span class="flex items-center">
+                    <i class="fa fa-gavel text-blue-500 mr-2"></i>
+                    <span class="text-gray-700 font-medium">法治建设实践</span>
+                </span>
+            </label>
+            
+            <label class="checkbox-container">
+                <input type="checkbox" class="category-checkbox" value="values" checked>
+                <span class="flex items-center">
+                    <i class="fa fa-star text-yellow-500 mr-2"></i>
+                    <span class="text-gray-700 font-medium">核心价值观践行</span>
+                </span>
+            </label>
+            
+            <label class="checkbox-container">
+                <input type="checkbox" class="category-checkbox" value="culture" checked>
+                <span class="flex items-center">
+                    <i class="fa fa-university text-green-500 mr-2"></i>
+                    <span class="text-gray-700 font-medium">特色文化传承</span>
+                </span>
+            </label>
+            
+            <label class="checkbox-container">
+                <input type="checkbox" class="category-checkbox" value="youth" checked>
+                <span class="flex items-center">
+                    <i class="fa fa-users text-purple-500 mr-2"></i>
+                    <span class="text-gray-700 font-medium">青年责任担当</span>
+                </span>
+            </label>
+            
+            <label class="checkbox-container">
+                <input type="checkbox" class="category-checkbox" value="rural" checked>
+                <span class="flex items-center">
+                    <i class="fa fa-leaf text-emerald-500 mr-2"></i>
+                    <span class="text-gray-700 font-medium">乡村振兴发展</span>
+                </span>
+            </label>
+        </div>
+    </div>
+    
+    <!-- 青年责任板块 -->
+    <div class="youth-responsibility">
+        <div class="flex items-center mb-2">
+            <i class="fa fa-graduation-cap text-lg mr-2"></i>
+            <h3 class="font-bold text-lg">青年责任与担当</h3>
+        </div>
+        <p class="text-sm opacity-90 leading-relaxed">
+            作为新时代青年，我们应关注家乡发展，积极参与道德建设与法治实践，为毕节现代化建设贡献青春力量。
+        </p>
+    </div>
+    
+    <!-- 使用提示 -->
+    <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mt-4">
+        <div class="flex items-start">
+            <i class="fa fa-info-circle text-blue-500 text-lg mt-0.5 mr-3"></i>
+            <div>
+                <p class="text-sm text-blue-800 font-medium mb-1">使用提示</p>
+                <p class="text-xs text-blue-600 leading-relaxed">
+                    • 点击地图标记查看详细信息<br>
+                    • 使用故事线进行主题导览<br>
+                    • 筛选不同维度探索特色内容
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 优化后的故事线对话框 -->
+<div class="story-line" id="story-line">
+    <span class="close-story text-gray-500">✖</span>
+    <h2 class="text-2xl font-bold mb-4 text-gray-800" id="story-title"></h2>
+    
+    <div class="progress-bar">
+        <div class="progress" id="story-progress"></div>
+    </div>
+    
+    <div id="story-content" class="mb-6"></div>
+    
+    <div class="flex justify-between items-center">
+        <button id="prev-story" class="btn-secondary">
+            <i class="fa fa-arrow-left mr-2"></i>
+            上一站
+        </button>
+        
+        <div class="text-sm font-medium text-gray-600 bg-gray-100 px-4 py-2 rounded-lg" id="story-counter"></div>
+        
+        <button id="next-story" class="btn-primary" style="padding: 12px 20px;">
+            下一站
+            <i class="fa fa-arrow-right ml-2"></i>
+        </button>
+    </div>
+</div>
+
+<!-- 详细信息对话框 -->
+<div class="story-line" id="info-panel">
+    <span class="close-story text-gray-500" id="close-info">✖</span>
+    <h2 class="text-2xl font-bold mb-4 text-gray-800" id="info-title"></h2>
+    
+    <div class="tab-container">
+        <div class="tab active" data-tab="basic">基本信息</div>
+        <div class="tab" data-tab="academic">学术视角</div>
+        <div class="tab" data-tab="ethics">伦理思考</div>
+        <div class="tab" data-tab="youth">青年责任</div>
+    </div>
+    
+    <div id="info-content" class="info-content"></div>
+</div>
+
+<script>
+// 更新为毕节市的景点数据，增加深度内容
+const points = [
+    {
+        id:1,
+        name:"毕节市博物馆",
+        category:"morality",
+        categoryName:"道德文化传承",
+        location:{lat:27.3026,lng:105.2843},
+        address:"贵州省毕节市七星关区",
+        description:"毕节市博物馆是展示地方历史文化的重要窗口，收藏了大量反映毕节历史变迁的文物。",
+        image:"https://ts1.tc.mm.bing.net/th/id/OIP-C.LMCXP7XvVEt79yx0ccRxvwHaEc?w=257&h=211&c=8&rs=1&qlt=90&o=6&dpr=1.3&pid=3.1&rm=2",
+        interpretation:"毕节市博物馆通过展览展示毕节的历史文化。",
+        storyOrder:1,
+        culturalStoryOrder:1,
+        revolutionaryStoryOrder:null,
+        youthStoryOrder:null,
+        ruralStoryOrder:null,
+        storyDescription:"第一站我们来到毕节市博物馆，这里收藏了大量反映毕节历史变迁的文物，是了解毕节历史文化的重要窗口。",
+        // 新增深度内容
+        academicPerspective:"博物馆作为文化记忆的载体，不仅保存物质文化遗产，更传承着地方道德观念与价值体系。毕节博物馆通过彝族、苗族等少数民族文物，展现了多元一体的中华文化格局。",
+        ethicalReflection:"博物馆展览设计体现了对历史真实的尊重和对多元文化的包容，这种策展伦理是文化机构社会责任的重要体现。",
+        youthResponsibility:"青年学子可以通过博物馆志愿者服务、文化讲解等方式，参与地方文化传承，增强文化自信。",
+        challenges:"博物馆面临数字化展示技术更新、年轻观众吸引等挑战。"
+    },
+    {
+        id:2,
+        name:"毕节市革命历史陈列馆",
+        category:"values",
+        categoryName:"核心价值观践行",
+        location:{lat:27.2985,lng:105.2789},
+        address:"贵州省毕节市七星关区",
+        description:"毕节市革命历史陈列馆建于1985年，展示了毕节地区丰富的革命历史和红色文化。",
+        image:"https://ts1.tc.mm.bing.net/th/id/OIP-C.qZFDHMyPVx4mYGnR8KfAVwHaFj?w=233&h=211&c=8&rs=1&qlt=90&o=6&dpr=1.3&pid=3.1&rm=2",
+        interpretation:"革命历史陈列馆见证了毕节的红色历史。",
+        storyOrder:2,
+        culturalStoryOrder:null,
+        revolutionaryStoryOrder:1,
+        youthStoryOrder:null,
+        ruralStoryOrder:null,
+        storyDescription:"第二站我们来到革命历史陈列馆，这里展示了毕节地区丰富的革命历史和红色文化，是爱国主义教育的重要基地。",
+        // 新增深度内容
+        academicPerspective:"革命历史陈列馆是集体记忆的物质载体，通过历史叙事构建地方认同与国家认同。其展陈内容反映了中国共产党在毕节的革命实践与群众路线。",
+        ethicalReflection:"陈列馆对革命历史的呈现，体现了对革命先烈的尊重与缅怀，这种历史伦理是社会主义核心价值观的重要基础。",
+        youthResponsibility:"青年应当从革命历史中汲取精神力量，在新时代传承红色基因，担当民族复兴大任。",
+        challenges:"如何创新红色教育形式，增强对年轻一代的吸引力是当前面临的主要挑战。"
+    },
+    {
+        id:3,
+        name:"织金洞",
+        category:"culture",
+        categoryName:"特色文化传承",
+        location:{lat:26.7823,lng:105.7681},
+        address:"贵州省毕节市织金县",
+        description:"织金洞是世界地质公园，国家4A级旅游景区，以其宏伟壮观的喀斯特地貌闻名。",
+        image:"https://ts1.tc.mm.bing.net/th/id/OIP-C.MPbgPiAh9m35eSjTLwq9PAHaEv?w=240&h=211&c=8&rs=1&qlt=90&o=6&dpr=1.3&pid=3.1&rm=2",
+        interpretation:"织金洞是毕节的自然与文化地标。",
+        storyOrder:3,
+        culturalStoryOrder:2,
+        revolutionaryStoryOrder:null,
+        youthStoryOrder:3,
+        ruralStoryOrder:3,
+        storyDescription:"第三站我们来到织金洞，这里以其宏伟壮观的喀斯特地貌闻名，是世界地质公园和国家4A级旅游景区。",
+        // 新增深度内容
+        academicPerspective:"织金洞作为喀斯特地貌的典型代表，具有重要的地质学研究价值。其保护与开发平衡了科学研究与公共教育功能。",
+        ethicalReflection:"旅游景区开发中的环境保护与社区参与，体现了可持续发展理念与代际公平的伦理考量。",
+        youthResponsibility:"青年可以通过生态旅游、环保志愿活动等方式，参与自然遗产保护，践行生态文明理念。",
+        challenges:"旅游开发与生态保护的平衡是织金洞可持续发展面临的主要挑战。"
+    },
+    {
+        id:4,
+        name:"百里杜鹃",
+        category:"culture",
+        categoryName:"特色文化传承",
+        location:{lat:27.2182,lng:105.7865},
+        address:"贵州省毕节市大方县",
+        description:"百里杜鹃是国家5A级旅游景区，拥有世界上面积最大、种类最多的原始杜鹃林。",
+        image:"https://ts1.tc.mm.bing.net/th/id/OIP-C.c37yaRA7U14ysFV52LEwRAHaE6?w=255&h=211&c=8&rs=1&qlt=90&o=6&dpr=1.3&pid=3.1&rm=2",
+        interpretation:"百里杜鹃展现了毕节丰富的自然生态资源。",
+        storyOrder:4,
+        culturalStoryOrder:3,
+        revolutionaryStoryOrder:null,
+        youthStoryOrder:4,
+        ruralStoryOrder:4,
+        storyDescription:"我们的旅程继续来到百里杜鹃，这里拥有世界上面积最大、种类最多的原始杜鹃林，是国家5A级旅游景区。",
+        // 新增深度内容
+        academicPerspective:"百里杜鹃的生物多样性研究为生态学提供了重要案例，其保护模式对全球生物多样性保护具有借鉴意义。",
+        ethicalReflection:"生态旅游开发中的社区受益与环境保护，体现了人与自然和谐共生的生态文明伦理。",
+        youthResponsibility:"青年应当成为生态文明的倡导者，通过科普宣传、环保行动等方式，守护家乡的绿水青山。",
+        challenges:"花期集中导致的旅游承载力压力是百里杜鹃面临的主要管理挑战。"
+    },
+    {
+        id:5,
+        name:"草海自然保护区",
+        category:"values",
+        categoryName:"核心价值观践行",
+        location:{lat:26.8721,lng:104.2843},
+        address:"贵州省毕节市威宁彝族回族苗族自治县",
+        description:"草海是国家级自然保护区，中国三大高原湖泊之一，是黑颈鹤等珍稀鸟类的重要越冬地。",
+        image:"https://ts1.tc.mm.bing.net/th/id/OIP-C.NB5IJLVMUxq_p1AeytmtiQHaE8?w=260&h=211&c=8&rs=1&qlt=90&o=6&cb=12&dpr=1.3&pid=3.1&rm=2",
+        interpretation:"草海自然保护区体现了生态文明建设理念。",
+        storyOrder:5,
+        culturalStoryOrder:4,
+        revolutionaryStoryOrder:null,
+        youthStoryOrder:5,
+        ruralStoryOrder:5,
+        storyDescription:"第五站我们来到草海自然保护区，这里是中国三大高原湖泊之一，是黑颈鹤等珍稀鸟类的重要越冬地，体现了生态文明建设理念。",
+        // 新增深度内容
+        academicPerspective:"草海湿地生态系统研究为高原湖泊保护提供了科学依据，其生物多样性监测网络是生态学研究的重要平台。",
+        ethicalReflection:"自然保护区管理体现了对自然内在价值的尊重，这种生态伦理是人类与自然和谐相处的基础。",
+        youthResponsibility:"青年可以参与湿地保护志愿者活动，宣传生态文明理念，成为生态保护的积极力量。",
+        challenges:"气候变化与人类活动对湿地生态系统的双重压力是草海保护面临的主要挑战。"
+    },
+    {
+        id:6,
+        name:"毕节市烈士陵园",
+        category:"values",
+        categoryName:"核心价值观践行",
+        location:{lat:27.3056,lng:105.2921},
+        address:"贵州省毕节市七星关区",
+        description:"缅怀革命烈士的纪念地，是爱国主义教育的重要场所。",
+        image:"https://ts1.tc.mm.bing.net/th/id/OIP-C.5cg1rHucSuMVp33GSW2xAAHaE8?w=242&h=211&c=8&rs=1&qlt=90&o=6&dpr=1.3&pid=3.1&rm=2",
+        interpretation:"是青少年接受爱国主义教育的重要场所。",
+        storyOrder:6,
+        culturalStoryOrder:null,
+        revolutionaryStoryOrder:2,
+        youthStoryOrder:null,
+        ruralStoryOrder:null,
+        storyDescription:"第六站我们来到毕节市烈士陵园，这里是缅怀革命烈士的纪念地，也是爱国主义教育的重要场所。",
+        // 新增深度内容
+        academicPerspective:"烈士陵园作为纪念空间，承载着集体记忆与国家认同构建功能，其空间叙事反映了历史观与价值观。",
+        ethicalReflection:"对革命烈士的纪念体现了社会对牺牲精神的崇敬，这种纪念伦理是社会主义核心价值观的重要体现。",
+        youthResponsibility:"青年应当铭记历史，传承革命精神，在新时代建设中发扬爱国主义精神。",
+        challenges:"如何使传统纪念场所更好地适应年轻一代的认知方式是当前面临的教育挑战。"
+    },
+    {
+        id:7,
+        name:"毕节学院",
+        category:"morality",
+        categoryName:"道德文化传承",
+        location:{lat:27.3215,lng:105.3012},
+        address:"贵州省毕节市七星关区",
+        description:"毕节市重点高校，培养了大批优秀人才，为地方发展做出了重要贡献。",
+        image:"https://ts1.tc.mm.bing.net/th/id/OIP-C.5GtsQ7otim9Hze76gbKzZwHaE7?w=240&h=211&c=8&rs=1&qlt=90&o=6&dpr=1.3&pid=3.1&rm=2",
+        interpretation:"长期开展文明校园和价值观教育。",
+        storyOrder:7,
+        culturalStoryOrder:null,
+        revolutionaryStoryOrder:null,
+        youthStoryOrder:1,
+        ruralStoryOrder:null,
+        storyDescription:"第七站我们来到毕节学院，这所毕节市重点高校培养了大批优秀人才，为地方发展做出了重要贡献。",
+        // 新增深度内容
+        academicPerspective:"高校作为知识生产与传播的中心，在地方文化研究与道德教育中发挥着引领作用。",
+        ethicalReflection:"高校教育伦理体现在学术诚信、师德建设与学生全面发展的教育理念中。",
+        youthResponsibility:"青年学生应当珍惜学习机会，提升综合素质，为家乡发展储备知识与能力。",
+        challenges:"地方高校在资源获取、学科建设与人才引进方面仍面临诸多挑战。"
+    },
+    {
+        id:8,
+        name:"九洞天风景区",
+        category:"culture",
+        categoryName:"特色文化传承",
+        location:{lat:27.0512,lng:105.4231},
+        address:"贵州省毕节市大方县",
+        description:"九洞天是国家级风景名胜区，集伏流、峡谷、溶洞、天桥、天坑等多种喀斯特地貌景观于一体。",
+        image:"https://ts1.tc.mm.bing.net/th/id/OIP-C.K65Ql8iYpim5htFPMoRbQgHaE8?w=295&h=211&c=8&rs=1&qlt=90&o=6&dpr=1.3&pid=3.1&rm=2",
+        interpretation:"九洞天是喀斯特地貌的杰出代表。",
+        storyOrder:8,
+        culturalStoryOrder:5,
+        revolutionaryStoryOrder:null,
+        youthStoryOrder:6,
+        ruralStoryOrder:6,
+        storyDescription:"最后一站我们来到九洞天风景区，这里集伏流、峡谷、溶洞、天桥、天坑等多种喀斯特地貌景观于一体，是国家级风景名胜区。",
+        // 新增深度内容
+        academicPerspective:"九洞天地质景观为喀斯特地貌研究提供了丰富案例，其形成机制研究具有重要科学价值。",
+        ethicalReflection:"自然景观的公共属性与旅游开发的平衡，体现了资源分配的公平性与可持续性伦理。",
+        youthResponsibility:"青年可以通过生态旅游、科普讲解等方式，参与自然遗产的保护与传播。",
+        challenges:"如何在旅游开发中保持地质遗迹的原真性与完整性是九洞天面临的主要保护挑战。"
+    },
+    {
+        id:9,
+        name:"毕节市人民法院",
+        category:"rule",
+        categoryName:"法治建设实践",
+        location:{lat:27.3089,lng:105.2902},
+        address:"贵州省毕节市七星关区",
+        description:"毕节市司法审判机关，承担着维护社会公平正义的重要职责。",
+        image:"https://ts1.tc.mm.bing.net/th/id/OIP-C.yEo408w_NR4LRAzhiEShCAHaE6?w=255&h=211&c=8&rs=1&qlt=90&o=6&cb=12&dpr=1.3&pid=3.1&rm=2",
+        interpretation:"人民法院是法治建设的重要阵地。",
+        storyOrder:null,
+        culturalStoryOrder:null,
+        revolutionaryStoryOrder:null,
+        youthStoryOrder:2,
+        ruralStoryOrder:null,
+        storyDescription:"",
+        // 新增深度内容
+        academicPerspective:"基层法院的司法实践反映了中国法治建设的进程，其案例研究为法学研究提供了丰富素材。",
+        ethicalReflection:"司法公正体现了社会公平正义的最高价值，法官的职业伦理是司法公信力的基础。",
+        youthResponsibility:"青年可以通过旁听庭审、参与普法宣传等方式，增强法治意识，成为法治建设的积极参与者。",
+        challenges:"基层法院面临案多人少、司法资源不足等现实困难。"
+    },
+    {
+        id:10,
+        name:"毕节市新时代文明实践中心",
+        category:"values",
+        categoryName:"核心价值观践行",
+        location:{lat:27.3001,lng:105.2867},
+        address:"贵州省毕节市七星关区",
+        description:"开展新时代文明实践活动的综合性平台，推动社会主义核心价值观落地生根。",
+        image:"https://ts1.tc.mm.bing.net/th/id/OIP-C.Z8OpUaGk5CovUGp7uWaGFAHaFj?w=232&h=211&c=8&rs=1&qlt=90&o=6&cb=12&dpr=1.3&pid=3.1&rm=2",
+        interpretation:"新时代文明实践中心是精神文明建设的重要载体。",
+        storyOrder:null,
+        culturalStoryOrder:null,
+        revolutionaryStoryOrder:null,
+        youthStoryOrder:7,
+        ruralStoryOrder:null,
+        storyDescription:"",
+        // 新增深度内容
+        academicPerspective:"新时代文明实践中心作为基层治理创新，体现了国家与社会关系的调适，其运行机制具有重要研究价值。",
+        ethicalReflection:"文明实践活动的自愿参与原则与公益导向，体现了公民道德建设的社会伦理基础。",
+        youthResponsibility:"青年是文明实践的骨干力量，可以通过志愿服务、文化活动等方式参与社区建设。",
+        challenges:"如何增强文明实践活动的吸引力与持续性是需要不断探索的问题。"
+    },
+    {
+        id:11,
+        name:"七星关区空巢老人关爱中心",
+        category:"youth",
+        categoryName:"青年责任担当",
+        location:{lat:27.3156,lng:105.2754},
+        address:"贵州省毕节市七星关区",
+        description:"为社区空巢老人提供日间照料、健康监测和精神慰藉服务的公益机构。",
+        image:"https://ts1.tc.mm.bing.net/th/id/OIP-C.Cvk9wHf8tIITbOYf1dkXeAHaE7?w=245&h=211&c=8&rs=1&qlt=90&o=6&cb=12&dpr=1.3&pid=3.1&rm=2",
+        interpretation:"关爱空巢老人体现了社会对弱势群体的关怀和责任担当。",
+        storyOrder:null,
+        culturalStoryOrder:null,
+        revolutionaryStoryOrder:null,
+        youthStoryOrder:8,
+        ruralStoryOrder:null,
+        storyDescription:"",
+        // 新增深度内容
+        academicPerspective:"空巢老人现象反映了中国社会转型期的人口结构变化，其社会支持体系建设具有重要的社会学研究价值。",
+        ethicalReflection:"关爱空巢老人体现了代际公平与社会正义的伦理要求，是构建和谐社会的重要环节。",
+        youthResponsibility:"青年可以通过志愿服务、陪伴关怀等方式参与空巢老人关爱工作，传承尊老敬老的传统美德。",
+        challenges:"空巢老人面临身心健康、社会融入等多重困难，需要建立更完善的社会支持体系。"
+    },
+    {
+        id:12,
+        name:"大方县乡村振兴示范点",
+        category:"rural",
+        categoryName:"乡村振兴发展",
+        location:{lat:27.1512,lng:105.6231},
+        address:"贵州省毕节市大方县",
+        description:"通过发展特色农业和乡村旅游，实现乡村振兴的示范村庄。",
+        image:"https://ts1.tc.mm.bing.net/th/id/OIP-C.gd2fqjb144Jiey7ECCaXogHaE2?w=240&h=211&c=8&rs=1&qlt=90&o=6&cb=12&dpr=1.3&pid=3.1&rm=2",
+        interpretation:"乡村振兴示范点展现了新时代农村发展的新面貌。",
+        storyOrder:null,
+        culturalStoryOrder:null,
+        revolutionaryStoryOrder:null,
+        youthStoryOrder:null,
+        ruralStoryOrder:1,
+        storyDescription:"",
+        // 新增深度内容
+        academicPerspective:"乡村振兴示范点为研究农村发展模式提供了实践案例，其经验对推动乡村现代化具有重要参考价值。",
+        ethicalReflection:"乡村振兴体现了城乡协调发展、共同富裕的发展伦理，是消除贫困、实现社会公平的重要途径。",
+        youthResponsibility:"青年可以返乡创业、参与乡村建设，为乡村振兴注入新活力，实现个人价值与社会价值的统一。",
+        challenges:"乡村人才流失、基础设施不足、产业发展单一等问题仍是乡村振兴面临的主要挑战。"
+    },
+    {
+        id:13,
+        name:"织金县茶产业示范园",
+        category:"rural",
+        categoryName:"乡村振兴发展",
+        location:{lat:26.6823,lng:105.8681},
+        address:"贵州省毕节市织金县",
+        description:"通过发展茶产业带动当地经济发展，实现产业振兴的现代农业示范园区。",
+        image:"https://ts1.tc.mm.bing.net/th/id/OIP-C.iWluOBzvQYq6l1qmK48UPAAAAA?w=263&h=211&c=8&rs=1&qlt=90&o=6&cb=12&dpr=1.3&pid=3.1&rm=2",
+        interpretation:"茶产业示范园展现了农业现代化的新路径。",
+        storyOrder:null,
+        culturalStoryOrder:null,
+        revolutionaryStoryOrder:null,
+        youthStoryOrder:null,
+        ruralStoryOrder:2,
+        storyDescription:"",
+        // 新增深度内容
+        academicPerspective:"茶产业示范园为研究特色农业发展与农村产业转型提供了典型案例，其发展模式具有重要的农业经济学研究价值。",
+        ethicalReflection:"农业产业化发展体现了对农民权益的保护和对生态环境的尊重，是可持续发展理念在农业领域的实践。",
+        youthResponsibility:"青年可以运用现代科技和营销手段，推动传统农业转型升级，为乡村振兴贡献智慧和力量。",
+        challenges:"农产品品牌建设、市场拓展、技术更新等是茶产业发展面临的主要问题。"
+    },
+    {
+        id:14,
+        name:"威宁县留守儿童关爱学校",
+        category:"youth",
+        categoryName:"青年责任担当",
+        location:{lat:26.8721,lng:104.3843},
+        address:"贵州省毕节市威宁彝族回族苗族自治县",
+        description:"为留守儿童提供学习辅导、心理关怀和成长陪伴的特殊教育机构。",
+        image:"https://ts1.tc.mm.bing.net/th/id/OIP-C.YN2wFWZPefUp5VvSaq_58gHaEz?w=247&h=211&c=8&rs=1&qlt=90&o=6&cb=12&dpr=1.3&pid=3.1&rm=2",
+        interpretation:"关爱留守儿童体现了社会对下一代健康成长的重视。",
+        storyOrder:null,
+        culturalStoryOrder:null,
+        revolutionaryStoryOrder:null,
+        youthStoryOrder:9,
+        ruralStoryOrder:null,
+        storyDescription:"",
+        // 新增深度内容
+        academicPerspective:"留守儿童现象反映了中国城镇化进程中的社会问题，其教育与发展研究具有重要的教育学和社会学价值。",
+        ethicalReflection:"关爱留守儿童体现了教育公平与社会正义的伦理要求，是保障儿童发展权利的重要举措。",
+        youthResponsibility:"青年可以通过支教、陪伴、捐赠等方式参与留守儿童关爱工作，为孩子们的健康成长贡献力量。",
+        challenges:"留守儿童面临教育资源不足、心理健康问题、家庭关爱缺失等多重困难。"
+    }
+];
+
+const categoryColors = {
+    morality: '#dc2626',
+    rule: '#2563eb', 
+    values: '#ea580c',
+    culture: '#059669',
+    youth: '#8b5cf6',
+    rural: '#10b981'
+};
+
+const categoryIcons = {
+    morality: 'fa-heart',
+    rule: 'fa-gavel',
+    values: 'fa-star',
+    culture: 'fa-university',
+    youth: 'fa-users',
+    rural: 'fa-leaf'
+};
+
+// 故事线定义
+const storylines = {
+    cultural: {
+        name: "文化传承之旅",
+        description: "探索毕节特色文化与历史传承",
+        points: points.filter(p => p.culturalStoryOrder !== null).sort((a, b) => a.culturalStoryOrder - b.culturalStoryOrder)
+    },
+    revolutionary: {
+        name: "红色记忆之旅",
+        description: "追寻革命足迹，传承红色基因",
+        points: points.filter(p => p.revolutionaryStoryOrder !== null).sort((a, b) => a.revolutionaryStoryOrder - b.revolutionaryStoryOrder)
+    },
+    youth: {
+        name: "青年责任之旅",
+        description: "新时代青年的使命与担当",
+        points: points.filter(p => p.youthStoryOrder !== null).sort((a, b) => a.youthStoryOrder - b.youthStoryOrder)
+    },
+    rural: {
+        name: "乡村振兴之旅",
+        description: "探索乡村发展与青年机遇",
+        points: points.filter(p => p.ruralStoryOrder !== null).sort((a, b) => a.ruralStoryOrder - b.ruralStoryOrder)
+    }
+};
+
+let map, markers = {}, labels = {};
+let currentStoryIndex = 0;
+let currentStoryline = storylines.cultural;
+
+// 修改地图中心为毕节市
+function initMap() {
+    map = new BMapGL.Map("map-container");
+    map.centerAndZoom(new BMapGL.Point(105.2843, 27.3026), 12);
+    map.enableScrollWheelZoom(true);
+    
+    // 添加地图控件
+    map.addControl(new BMapGL.ScaleControl());
+    map.addControl(new BMapGL.NavigationControl());
+    
+    createMarkers();
+}
+
+function createMarkers() {
+    points.forEach(p => {
+        const marker = new BMapGL.Marker(new BMapGL.Point(p.location.lng, p.location.lat));
+        const iconColor = categoryColors[p.category];
+        
+        const labelContent = `
+            <div class="custom-label" style="border-left-color:${iconColor}">
+                <span class="category-badge" style="background:${iconColor}">
+                    <i class="fa ${categoryIcons[p.category]}"></i>
+                </span>
+                ${p.name}
+            </div>
+        `;
+        
+        const label = new BMapGL.Label(labelContent, {
+            offset: new BMapGL.Size(-80, 40),
+            position: new BMapGL.Point(p.location.lng, p.location.lat)
+        });
+        
+        label.setStyle({
+            border: "none",
+            padding: "0",
+            margin: "0",
+            zIndex: "100"
+        });
+        
+        marker.addEventListener('click', () => showInfo(p));
+        label.addEventListener('click', () => showInfo(p));
+        
+        map.addOverlay(marker);
+        map.addOverlay(label);
+        markers[p.id] = marker;
+        labels[p.id] = label;
+    });
+}
+
+function showInfo(p) {
+    document.getElementById('info-title').textContent = p.name;
+    document.getElementById('info-panel').classList.add('active');
+    
+    // 默认显示基本信息
+    showInfoTab('basic', p);
+    
+    // 添加标签切换事件
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            showInfoTab(this.dataset.tab, p);
+        });
+    });
+}
+
+function showInfoTab(tab, p) {
+    const content = document.getElementById('info-content');
+    
+    switch(tab) {
+        case 'basic':
+            content.innerHTML = `
+                <img src="${p.image}" class='w-full h-48 object-cover rounded-lg mb-4 shadow-md'>
+                <div class="mb-4">
+                    <h3 class="font-bold text-lg mb-2">地点简介</h3>
+                    <p class="text-gray-700">${p.description}</p>
+                </div>
+                <div class="mb-4">
+                    <h3 class="font-bold text-lg mb-2">文化解读</h3>
+                    <p class="text-gray-700">${p.interpretation}</p>
+                </div>
+                <div class="flex items-center text-gray-600">
+                    <i class="fa fa-map-marker-alt mr-2 text-red-500"></i>
+                    <span>${p.address}</span>
+                </div>
+            `;
+            break;
+        case 'academic':
+            content.innerHTML = `
+                <div class="dimension-card" style="border-left-color: #3b82f6">
+                    <h3 class="font-bold text-lg mb-2 flex items-center">
+                        <i class="fa fa-graduation-cap text-blue-500 mr-2"></i>
+                        学术视角
+                    </h3>
+                    <p class="text-gray-700">${p.academicPerspective}</p>
+                </div>
+            `;
+            break;
+        case 'ethics':
+            content.innerHTML = `
+                <div class="ethics-card">
+                    <h3 class="font-bold text-lg mb-2 flex items-center">
+                        <i class="fa fa-balance-scale text-green-500 mr-2"></i>
+                        伦理思考
+                    </h3>
+                    <p class="text-gray-700">${p.ethicalReflection}</p>
+                </div>
+            `;
+            break;
+        case 'youth':
+            let challengeContent = '';
+            if (p.challenges) {
+                challengeContent = `
+                    <div class="challenge-card">
+                        <h4 class="font-bold text-red-800 mb-1 flex items-center">
+                            <i class="fa fa-exclamation-triangle text-red-500 mr-2"></i>
+                            发展挑战
+                        </h4>
+                        <p class="text-red-700 text-sm">${p.challenges}</p>
+                    </div>
+                `;
+            }
+            
+            content.innerHTML = `
+                <div class="youth-card">
+                    <h3 class="font-bold text-lg mb-2 flex items-center">
+                        <i class="fa fa-users text-purple-500 mr-2"></i>
+                        青年责任
+                    </h3>
+                    <p class="text-gray-700 mb-3">${p.youthResponsibility}</p>
+                    ${challengeContent}
+                </div>
+            `;
+            break;
+    }
+}
+
+// 筛选功能
+document.querySelectorAll('.category-checkbox').forEach(cb => {
+    cb.addEventListener('change', () => {
+        const cat = cb.value;
+        const checked = cb.checked;
+        
+        points.forEach(p => {
+            if (p.category === cat) {
+                if (checked) {
+                    map.addOverlay(markers[p.id]);
+                    map.addOverlay(labels[p.id]);
+                } else {
+                    map.removeOverlay(markers[p.id]);
+                    map.removeOverlay(labels[p.id]);
+                }
+            }
+        });
+    });
+});
+
+// 故事线选择功能
+document.querySelectorAll('.story-option').forEach(option => {
+    option.addEventListener('click', function() {
+        document.querySelectorAll('.story-option').forEach(opt => opt.classList.remove('active'));
+        this.classList.add('active');
+        currentStoryline = storylines[this.dataset.story];
+    });
+});
+
+// 故事线功能
+document.getElementById('story-btn').addEventListener('click', () => {
+    document.getElementById('story-line').classList.add('active');
+    showStoryPoint(0);
+});
+
+document.querySelector('.close-story').addEventListener('click', () => {
+    document.getElementById('story-line').classList.remove('active');
+});
+
+document.getElementById('close-info').addEventListener('click', () => {
+    document.getElementById('info-panel').classList.remove('active');
+});
+
+document.getElementById('prev-story').addEventListener('click', () => {
+    if (currentStoryIndex > 0) showStoryPoint(currentStoryIndex - 1);
+});
+
+document.getElementById('next-story').addEventListener('click', () => {
+    if (currentStoryIndex < currentStoryline.points.length - 1) showStoryPoint(currentStoryIndex + 1);
+});
+
+function showStoryPoint(i) {
+    currentStoryIndex = i;
+    const p = currentStoryline.points[i];
+    
+    document.getElementById('story-title').textContent = `${currentStoryline.name} - ${p.name}`;
+    
+    let challengeContent = '';
+    if (p.challenges) {
+        challengeContent = `
+            <div class="challenge-card mt-4">
+                <h4 class="font-bold text-red-800 mb-1 flex items-center">
+                    <i class="fa fa-exclamation-triangle text-red-500 mr-2"></i>
+                    发展挑战
+                </h4>
+                <p class="text-red-700 text-sm">${p.challenges}</p>
+            </div>
+        `;
+    }
+    
+    document.getElementById('story-content').innerHTML = `
+        <img src='${p.image}' class='w-full h-48 object-cover rounded-lg mb-4 shadow-md'>
+        <p class='text-gray-700 text-lg leading-relaxed'>${p.storyDescription || p.description}</p>
+        <div class='flex items-center mt-3 text-gray-600'>
+            <i class="fa fa-map-marker-alt mr-2 text-red-500"></i>
+            <span class='text-sm'>${p.address}</span>
+        </div>
+        <div class="mt-4 p-3 bg-blue-50 rounded-lg">
+            <h4 class="font-bold text-blue-800 mb-1">青年思考</h4>
+            <p class="text-blue-700 text-sm">${p.youthResponsibility}</p>
+        </div>
+        ${challengeContent}
+    `;
+    
+    document.getElementById('story-progress').style.width = ((i + 1) / currentStoryline.points.length * 100) + "%";
+    document.getElementById('story-counter').textContent = `${i + 1} / ${currentStoryline.points.length}`;
+    
+    // 更新按钮状态
+    document.getElementById('prev-story').disabled = (i === 0);
+    document.getElementById('next-story').disabled = (i === currentStoryline.points.length - 1);
+    
+    // 移动地图到当前故事点
+    map.centerAndZoom(new BMapGL.Point(p.location.lng, p.location.lat), 15);
+    
+    // 高亮当前标记
+    Object.values(markers).forEach(marker => {
+        marker.setAnimation(null);
+    });
+    
+    if (markers[p.id]) {
+        markers[p.id].setAnimation(BMAP_ANIMATION_BOUNCE);
+    }
+}
+
+window.onload = initMap;
+</script>
+</body>
+</html>
